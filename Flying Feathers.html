@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flying Feathers - Ultimate Physics Game</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        /* === CSS VARIABLES (THEME LOGIC) === */
+        :root {
+            --bg-main: #0b0c10;
+            --bg-card: rgba(31, 40, 51, 0.85);
+            --text-main: #ffffff;
+            --text-muted: #c5c6c7;
+            --accent: #66fcf1;
+            --accent-alt: #45a29e;
+            --box-color: #d35400;
+        }
+
+        body.light-mode {
+            --bg-main: #e0f7fa;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --text-main: #1f2833;
+            --text-muted: #34495e;
+            --accent: #ff4d4d;
+            --accent-alt: #f1c40f;
+            --box-color: #8b4513;
+        }
+
+        /* === GLOBAL STYLES === */
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow-x: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* === THEME TOGGLE BUTTON === */
+        .theme-toggle {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: var(--accent);
+            color: var(--bg-main);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            font-family: 'Bangers', cursive;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        /* === HEADER 3D BACKGROUND === */
+        #header-canvas {
+            position: fixed; 
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+
+        /* === SCROLL ANIMATIONS === */
+        .reveal {
+            opacity: 0;
+            transform: translateY(100px);
+            transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* === MASSIVE SECTIONS === */
+        section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 100px 20px;
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-family: 'Bangers', cursive;
+            font-size: 12rem;
+            margin: 0;
+            line-height: 1;
+            color: var(--accent);
+            text-shadow: 0 0 30px var(--accent-alt);
+        }
+
+        .hero-subtitle {
+            font-size: 3rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: var(--accent-alt);
+            margin-top: 20px;
+        }
+
+        /* === TEXT CONTENT BLOCKS === */
+        .text-block {
+            max-width: 1000px;
+            background: var(--bg-card);
+            padding: 60px;
+            border-radius: 30px;
+            border-left: 10px solid var(--accent);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .text-block h2 {
+            font-family: 'Bangers', cursive;
+            font-size: 5rem;
+            margin-top: 0;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+
+        .text-block p {
+            font-size: 1.8rem;
+            line-height: 1.8;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            text-align: justify;
+        }
+
+        /* === BIG SHOP CARDS === */
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            width: 100%;
+            max-width: 1400px;
+            margin-top: 50px;
+        }
+
+        .bird-card {
+            background: var(--bg-card);
+            border: 4px solid transparent;
+            border-radius: 30px;
+            padding: 50px;
+            text-align: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .bird-card:hover {
+            transform: translateY(-20px) scale(1.05);
+            border-color: var(--accent);
+        }
+
+        .bird-img {
+            width: 200px;
+            height: 200px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+
+        .bird-card:hover .bird-img { transform: scale(1.2) rotate(5deg); }
+
+        .bird-name {
+            font-family: 'Bangers', cursive;
+            font-size: 4rem;
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .bird-ability { font-size: 1.5rem; font-weight: bold; color: var(--accent-alt); }
+
+        /* === DEMO MODAL === */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #87CEEB;
+            width: 90vw;
+            height: 80vh;
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+            border: 8px solid var(--accent);
+        }
+
+        .close-btn {
+            position: absolute; top: 20px; right: 40px;
+            font-family: 'Bangers', cursive; font-size: 4rem; color: #fff;
+            cursor: pointer; z-index: 20; text-shadow: 2px 2px 5px #000;
+        }
+
+        .ground {
+            position: absolute; bottom: 0; width: 100%; height: 15vh;
+            background: #27ae60; border-top: 20px solid #2ecc71;
+        }
+
+        .slingshot {
+    position: absolute; bottom: 15vh; left: 10vw;
+    width: 150px; height: 200px;
+    background: none;
+}
+
+        .demo-bird {
+            position: absolute; bottom: 25vh; left: 8vw;
+            width: 100px; height: 100px;
+            object-fit: contain; z-index: 15;
+            transform-origin: center;
+        }
+		.demo-egg {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    z-index: 14;
+    pointer-events: none;
+}
+
+.anim-egg {
+    animation: dropEgg 1s linear forwards;
+}
+
+@keyframes dropEgg {
+    0% {
+        transform: translate(0,0);
+    }
+    100% {
+        transform: translate(0,35vh);
+    }
+}
+
+        .obstacle {
+            position: absolute; bottom: 15vh; right: 20vw;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+       .box {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 2px;
+}
+
+        .pig {
+            width: 90px; height: 90px; margin-bottom: 5px;
+            background: #2ecc71; border-radius: 50%;
+            border: 4px solid #145a32; display: flex; justify-content: center; align-items: center;
+            font-size: 3rem; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        .explosion {
+            position: absolute; bottom: 15vh; right: 15vw;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, #ffeb3b 0%, #ff5722 40%, transparent 70%);
+            border-radius: 50%;
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0);
+        }
+
+        /* === BIRD ABILITY ANIMATIONS === */
+        
+        /* RED */
+        .anim-red { animation: flyRed 1.2s cubic-bezier(.42,0,.58,1) forwards; }
+        @keyframes flyRed {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(35vw, -30vh) rotate(180deg); }
+            100% { transform: translate(70vw, 5vh) rotate(360deg); }
+        }
+
+        /* CHUCK */
+        .anim-chuck { animation: flyChuck 1s forwards; }
+        @keyframes flyChuck {
+            0% { transform: translate(0, 0) rotate(0deg); animation-timing-function: ease-out; }
+            40% { transform: translate(25vw, -25vh) rotate(90deg); animation-timing-function: linear; }
+            100% { transform: translate(70vw, 5vh) rotate(360deg); }
+        }
+
+        /* BOMB */
+        .anim-bomb { animation: flyBomb 1s cubic-bezier(.42,0,.58,1) forwards; }
+        @keyframes flyBomb {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(35vw, -30vh) rotate(180deg); }
+            100% { transform: translate(65vw, 5vh) rotate(360deg); }
+        }
+        .anim-explode { animation: boom 0.5s ease-out 1s forwards; }
+        @keyframes boom {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* TERENCE */
+        .anim-terence { animation: flyTerence 2s linear forwards; }
+        @keyframes flyTerence {
+            0% { transform: translate(0, 0) rotate(0deg) scale(2.5); }
+            50% { transform: translate(35vw, -10vh) rotate(45deg) scale(2.5); }
+            100% { transform: translate(70vw, 15vh) rotate(90deg) scale(2.5); }
+        }
+
+        /* JAY (TRIPLE SPLIT) */
+        .anim-jay { animation: flyJay 1.2s ease-out forwards; }
+        @keyframes flyJay {
+            0% { transform: translate(0, 0) rotate(0deg); filter: drop-shadow(0 0 0 transparent); }
+            40% { transform: translate(25vw, -25vh) rotate(180deg); filter: drop-shadow(0 0 0 transparent); }
+            /* Split into 3 visually using drop-shadow */
+            45% { filter: drop-shadow(40px -40px 0 rgba(52, 152, 219, 0.8)) drop-shadow(-40px 40px 0 rgba(52, 152, 219, 0.8)); }
+            100% { transform: translate(70vw, 5vh) rotate(360deg); filter: drop-shadow(100px -100px 0 rgba(52, 152, 219, 0.8)) drop-shadow(-100px 100px 0 rgba(52, 152, 219, 0.8)); }
+        }
+/* MATILDA */
+.anim-matylda {
+    animation: flyRed 1.2s cubic-bezier(.42,0,.58,1) forwards;
+}
+        /* STRUCTURE DESTRUCTION */
+        .anim-shatter { animation: smash 0.8s ease-out forwards; }
+        @keyframes smash {
+            to { transform: translate(10vw, -10vh) rotate(120deg); opacity: 0; }
+        }
+		
+		/* === RESPONSIVE / MOBILE === */
+
+/* Tablet (up to 1024px) */
+@media (max-width: 1024px) {
+    .hero-title { font-size: 7rem; }
+    .hero-subtitle { font-size: 1.8rem; letter-spacing: 3px; }
+    .text-block { padding: 40px; }
+    .text-block h2 { font-size: 3.5rem; }
+    .text-block p { font-size: 1.3rem; }
+    .shop-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; }
+    .bird-card { padding: 30px; }
+    .bird-img { width: 140px; height: 140px; }
+    .bird-name { font-size: 2.5rem; }
+    .bird-ability { font-size: 1.1rem; }
+    .theme-toggle { font-size: 1rem; padding: 10px 20px; top: 15px; right: 15px; }
+}
+
+/* Mobile (up to 600px) */
+@media (max-width: 600px) {
+    section { padding: 80px 15px; }
+
+    .hero-title { font-size: 3.5rem; }
+    .hero-subtitle { font-size: 1rem; letter-spacing: 2px; margin-top: 10px; }
+
+    .text-block { padding: 25px 20px; border-radius: 15px; border-left-width: 5px; }
+    .text-block h2 { font-size: 2rem; }
+    .text-block p { font-size: 0.95rem; line-height: 1.6; }
+
+    .shop-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .bird-card { padding: 20px 10px; border-radius: 15px; border-width: 2px; }
+    .bird-img { width: 80px; height: 80px; }
+    .bird-name { font-size: 1.4rem; }
+    .bird-ability { font-size: 0.8rem; }
+
+    .theme-toggle { font-size: 0.75rem; padding: 8px 14px; top: 10px; right: 10px; }
+
+    /* Modal adjustments */
+    .modal-content { width: 98vw; height: 75vh; border-radius: 15px; border-width: 4px; }
+    .close-btn { font-size: 2.5rem; top: 10px; right: 20px; }
+
+    /* Scale down game elements inside the modal */
+    .slingshot { width: 30px; height: 90px; left: 5vw; }
+    .demo-bird { width: 60px; height: 60px; bottom: 22vh; left: 4vw; }
+    .demo-egg { width: 30px; height: 30px; }
+    .pig { width: 55px; height: 55px; }
+    .box { width: 60px; height: 60px; }
+    .explosion { width: 150px; height: 150px; right: 8vw; }
+    .obstacle { right: 10vw; }
+
+    /* Reduce scroll reveal shift on small screens */
+    .reveal { transform: translateY(40px); }
+}
+
+/* Very small phones (up to 380px) */
+@media (max-width: 380px) {
+    .hero-title { font-size: 2.8rem; }
+    .shop-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .bird-img { width: 60px; height: 60px; }
+    .bird-name { font-size: 1.1rem; }
+    .bird-ability { font-size: 0.7rem; }
+    .text-block h2 { font-size: 1.6rem; }
+    .text-block p { font-size: 0.85rem; }
+}
+		
+		
+    </style>
+</head>
+<body>
+
+    <button class="theme-toggle" onclick="toggleTheme()">VISUAL MODE: NEON</button>
+
+    <div id="header-canvas"></div>
+
+    <section>
+        <h1 class="hero-title reveal">FLYING FEATHERS</h1>
+        <p class="hero-subtitle reveal" style="transition-delay: 0.2s;">Bigger. Better. Explosive Physics.</p>
+    </section>
+
+    <section>
+        <div class="text-block reveal">
+            <h2>The Great Egg Heist</h2>
+            <p>The peaceful island was shattered when the greedy Green Pigs launched a sneak attack and stole the precious eggs! Now, the flock has only one mission: absolute and utter revenge. The survival of their species is at stake.</p>
+            <p>Load up the slingshot, aim carefully, and launch your furious feathered friends through the air. You must infiltrate the heavily fortified pig castles, smash through their defenses, and leave nothing but rubble behind. They started this war, but you are going to finish it.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="text-block reveal">
+            <h2>Master the Physics</h2>
+            <p>Every level is a complex puzzle governed by real-world physics and structural integrity. The pigs have built their fortresses out of wood, glass, and stone. You cannot just shoot blindly; you need to understand the materials.</p>
+            <p>Glass shatters easily, wood splinters under pressure, but stone requires a heavy hitter. Calculate your trajectory, find the structural weak points, and trigger massive chain reactions. A perfectly placed shot can bring an entire tower crashing down onto the unsuspecting pigs below!</p>
+        </div>
+    </section>
+
+    <section>
+        <h1 class="hero-title reveal" style="margin-bottom: 20px;">CHOOSE YOUR WEAPON</h1>
+<p class="hero-subtitle reveal" style="margin-bottom: 50px;">Click a bird to view their destructive potential.</p>
+        <div class="shop-grid">
+            
+            <div class="bird-card reveal" onclick="playDemo('red', 'red.png')">
+                <img src="red.png" alt="Red" class="bird-img" onerror="this.src='red.png'">
+                <h2 class="bird-name">RED</h2>
+                <p class="bird-ability">Skill: Pure Force</p>
+            </div>
+
+            <div class="bird-card reveal" style="transition-delay: 0.1s;" onclick="playDemo('chuck', 'chuck.webp')">
+                <img src="chuck.webp" alt="Chuck" class="bird-img" onerror="this.src='chuck.webp'">
+                <h2 class="bird-name">CHUCK</h2>
+                <p class="bird-ability">Skill: Speed Burst</p>
+            </div>
+
+            <div class="bird-card reveal" style="transition-delay: 0.2s;" onclick="playDemo('bomb', 'bomb.webp')">
+                <img src="bomb.webp" alt="Bomb" class="bird-img" onerror="this.src='bomb.webp'">
+                <h2 class="bird-name">BOMB</h2>
+                <p class="bird-ability">Skill: Massive Explosion</p>
+            </div>
+
+            <div class="bird-card reveal" style="transition-delay: 0.3s;" onclick="playDemo('terence', 'terence.webp')">
+                <img src="terence.webp" alt="Terence" class="bird-img" onerror="this.src='terence.webp'">
+                <h2 class="bird-name">TERENCE</h2>
+                <p class="bird-ability">Skill: Unstoppable Giant</p>
+            </div>
+
+            <div class="bird-card reveal" style="transition-delay: 0.4s;" onclick="playDemo('jay', 'jay.webp')">
+                <img src="jay.webp" alt="Jay" class="bird-img" onerror="this.src='jay.webp'">
+                <h2 class="bird-name">JAY</h2>
+                <p class="bird-ability">Skill: Triple Split</p>
+            </div>
+			
+			 <div class="bird-card reveal" style="transition-delay: 0.4s;" onclick="playDemo('matylda', 'matylda.webp')">
+                <img src="matylda.webp" alt="Matylda" class="bird-img" onerror="this.src='matylda.webp'">
+                <h2 class="bird-name">Matilda</h2>
+                <p class="bird-ability">Skill: Floating eggs</p>
+            </div>
+
+        </div>
+    </section>
+
+    <div id="actionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">✖</span>
+            
+            <div class="ground"></div>
+            <img src="slingshot.webp" alt="Slingshot" class="slingshot" style="object-fit: contain;">
+            
+            <img id="demoBird" class="demo-bird" src="" alt="Bird">
+            <img id="demoEgg" class="demo-egg" src="jajko.webp" alt="Egg">
+            <div class="obstacle">
+    <img id="demoPig" class="pig" src="pig.webp" alt="Pig">
+
+    <img id="box1" class="box" src="drewno.png" alt="Wood">
+
+    <img id="box2" class="box" src="kamien.png" alt="Stone">
+</div>
+
+
+            <div id="explosionEffect" class="explosion"></div>
+        </div>
+    </div>
+
+    <script>
+        // === SCROLL REVEAL LOGIC ===
+        function reveal() {
+            var reveals = document.querySelectorAll(".reveal");
+            for (var i = 0; i < reveals.length; i++) {
+                var windowHeight = window.innerHeight;
+                var elementTop = reveals[i].getBoundingClientRect().top;
+                var elementVisible = 100;
+                if (elementTop < windowHeight - elementVisible) {
+                    reveals[i].classList.add("active");
+                }
+            }
+        }
+        window.addEventListener("scroll", reveal);
+        reveal(); // Trigger on load
+
+        // === THEME TOGGLE LOGIC ===
+        const btn = document.querySelector('.theme-toggle');
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            if(document.body.classList.contains('light-mode')) {
+                btn.innerText = "VISUAL MODE: LIGHT";
+            } else {
+                btn.innerText = "VISUAL MODE: NEON";
+            }
+        }
+
+        // === 3D BACKGROUND LOGIC ===
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('header-canvas').appendChild(renderer.domElement);
+
+        const objects = [];
+        const geometry = new THREE.BoxGeometry(2, 2, 2);
+        
+        for(let i=0; i<30; i++) {
+            const material = new THREE.MeshBasicMaterial({ 
+                color: Math.random() > 0.5 ? 0x66fcf1 : 0xff4d4d,
+                wireframe: true, transparent: true, opacity: 0.2
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set((Math.random() - 0.5) * 50, (Math.random() - 0.5) * 50, (Math.random() - 0.5) * 30 - 10);
+            scene.add(mesh);
+            objects.push({ mesh: mesh, speedX: Math.random() * 0.01, speedY: Math.random() * 0.01 });
+        }
+
+        camera.position.z = 15;
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            objects.forEach(obj => {
+                obj.mesh.rotation.x += obj.speedX;
+                obj.mesh.rotation.y += obj.speedY;
+            });
+            renderer.render(scene, camera);
+        }
+        animate3D();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // === MODAL & ABILITIES LOGIC ===
+        const modal = document.getElementById('actionModal');
+        const birdEl = document.getElementById('demoBird');
+		const eggEl = document.getElementById('demoEgg');
+        const box1 = document.getElementById('box1');
+        const box2 = document.getElementById('box2');
+        const pig = document.getElementById('demoPig');
+        const explosion = document.getElementById('explosionEffect');
+
+        function playDemo(birdType, imageSrc) {
+            birdEl.src = imageSrc;
+            modal.style.display = 'flex';
+
+            // Reset all animations
+            birdEl.className = 'demo-bird';
+			birdEl.style.opacity = '1';
+            box1.style.animation = 'none';
+            box2.style.animation = 'none';
+            pig.style.animation = 'none';
+            explosion.classList.remove('anim-explode');
+			eggEl.style.display = 'none';
+eggEl.classList.remove('anim-egg');
+
+            // Force reflow to restart CSS animations
+            void birdEl.offsetWidth;
+
+            // Apply specific bird animation based on the clicked card
+            setTimeout(() => {
+                let delay = 1000;
+
+                if (birdType === 'red') {
+                    birdEl.classList.add('anim-red');
+                } 
+                else if (birdType === 'chuck') {
+                    birdEl.classList.add('anim-chuck');
+                    delay = 700; // Chuck hits faster
+                } 
+                else if (birdType === 'bomb') {
+                    birdEl.classList.add('anim-bomb');
+                    explosion.classList.add('anim-explode');
+                } 
+                else if (birdType === 'terence') {
+                    birdEl.classList.add('anim-terence');
+                    delay = 1800; // Terence moves slowly
+                }
+                else if (birdType === 'jay') {
+                    birdEl.classList.add('anim-jay');
+                    delay = 1000;
+                }
+				else if (birdType === 'matylda') {
+    birdEl.classList.add('anim-matylda');
+
+    setTimeout(() => {
+        eggEl.style.display = 'block';
+
+        eggEl.style.left = '35vw';
+        eggEl.style.top = '25vh';
+
+        eggEl.classList.remove('anim-egg');
+        void eggEl.offsetWidth;
+        eggEl.classList.add('anim-egg');
+    }, 500);
+
+    delay = 1000;
+}
+
+setTimeout(() => {
+    box1.style.animation = 'smash 0.8s ease-out forwards';
+    box2.style.animation = 'smash 0.8s ease-out 0.1s forwards';
+    pig.style.animation = 'smash 0.5s ease-out forwards';
+
+    // Hide the bird 2 seconds after impact
+    setTimeout(() => {
+        birdEl.style.transition = 'opacity 0.5s ease';
+        birdEl.style.opacity = '0';
+    }, 2000);
+
+}, delay);
+
+            }, 100);
+        }
+
+        function closeModal() { modal.style.display = 'none'; }
+        
+        window.onclick = function(event) {
+            if (event.target === modal) closeModal();
+        }
+    </script>
+</body>
+</html>
